@@ -1,0 +1,188 @@
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <iomanip>
+#include <algorithm>
+using namespace std;
+
+struct Transaction {
+    string type;
+    double amount;
+    string category;
+    string date;
+};
+
+Transaction parseTransaction(const string &line) {
+    Transaction t;
+    stringstream ss(line);
+    string value;
+
+    getline(ss, t.type, ',');
+    getline(ss, value, ',');
+    try {
+        t.amount = stod(value);
+    } catch (...) {
+        t.amount = 0;
+    }
+    getline(ss, t.category, ',');
+    getline(ss, t.date, ',');
+    return t;
+}
+
+void viewTransactions(const vector<Transaction> &transactions) {
+    if (transactions.empty()) {
+        cout << "\nNo transactions found.\n";
+        return;
+    }
+
+    cout << fixed << setprecision(2);
+    cout << "\n---- All Transactions ----\n";
+    cout << left << setw(12) << "Type"
+         << setw(10) << "Amount"
+         << setw(15) << "Category"
+         << setw(12) << "Date" << "\n";
+    cout << "---------------------------------------------\n";
+
+    for (const auto &t : transactions) {
+        cout << left << setw(12) << t.type
+             << setw(10) << t.amount
+             << setw(15) << t.category
+             << setw(12) << t.date << "\n";
+    }
+}
+
+void viewSummary(const vector<Transaction> &transactions) {
+    if (transactions.empty()) {
+        cout << "\nNo transactions to summarize.\n";
+        return;
+    }
+
+    double totalIncome = 0, totalExpense = 0;
+    for (const auto &t : transactions) {
+        if (t.type == "income")
+            totalIncome += t.amount;
+        else if (t.type == "expense")
+            totalExpense += t.amount;
+    }
+
+    cout << "\n---- Summary ----\n";
+    cout << fixed << setprecision(2);
+    cout << "Total Income : " << totalIncome << "\n";
+    cout << "Total Expense: " << totalExpense << "\n";
+    cout << "Balance      : " << (totalIncome - totalExpense) << "\n";
+}
+
+void searchTransactions(const vector<Transaction> &transactions) {
+    if (transactions.empty()) {
+        cout << "\nNo transactions available to search.\n";
+        return;
+    }
+
+    int choice;
+    cout << "\nSearch by:\n1. Category\n2. Date\nEnter choice: ";
+    cin >> choice;
+    cin.ignore();
+
+    string keyword;
+    if (choice == 1) {
+        cout << "Enter category: ";
+    } else if (choice == 2) {
+        cout << "Enter date (YYYY-MM-DD): ";
+    } else {
+        cout << "Invalid choice!\n";
+        return;
+    }
+    getline(cin, keyword);
+
+    cout << "\n---- Search Results ----\n";
+    cout << left << setw(12) << "Type"
+         << setw(10) << "Amount"
+         << setw(15) << "Category"
+         << setw(12) << "Date" << "\n";
+    cout << "---------------------------------------------\n";
+
+    bool found = false;
+    for (const auto &t : transactions) {
+        if ((choice == 1 && t.category == keyword) ||
+            (choice == 2 && t.date == keyword)) {
+            cout << left << setw(12) << t.type
+                 << setw(10) << t.amount
+                 << setw(15) << t.category
+                 << setw(12) << t.date << "\n";
+            found = true;
+        }
+    }
+    if (!found)
+        cout << "No matching transactions found.\n";
+}
+
+int main() {
+    vector<Transaction> transactions;
+    ifstream inFile("transactions.txt");
+    string line;
+    if (!inFile)
+        cout << "No existing file found. A new one will be created.\n";
+    while (getline(inFile, line)) {
+        if (!line.empty())
+            transactions.push_back(parseTransaction(line));
+    }
+    inFile.close();
+
+    cout << "Loaded " << transactions.size() << " transactions from file.\n";
+
+    int choice;
+    do {
+        cout << "\n===== Personal Finance Tracker =====\n";
+        cout << "1. Add Transaction\n";
+        cout << "2. View All Transactions\n";
+        cout << "3. View Summary\n";
+        cout << "4. Search Transactions\n";
+        cout << "5. Exit\n";
+        cout << "Enter choice: ";
+        cin >> choice;
+
+        if (choice == 1) {
+            Transaction t;
+            do {
+                cout << "Enter type (income/expense): ";
+                cin >> t.type;
+                transform(t.type.begin(), t.type.end(), t.type.begin(), ::tolower);
+                if (t.type != "income" && t.type != "expense")
+                    cout << "Invalid type! Please enter 'income' or 'expense'.\n";
+            } while (t.type != "income" && t.type != "expense");
+
+            cout << "Enter amount: ";
+            while (!(cin >> t.amount)) {
+                cout << "Invalid amount! Enter again: ";
+                cin.clear();
+                cin.ignore(10000, '\n');
+            }
+
+            cout << "Enter category: ";
+            cin >> t.category;
+            cout << "Enter date (YYYY-MM-DD): ";
+            cin >> t.date;
+
+            transactions.push_back(t);
+            ofstream outFile("transactions.txt", ios::app);
+            outFile << t.type << "," << t.amount << "," << t.category << "," << t.date << "\n";
+            outFile.close();
+
+            cout << "Transaction saved!\n";
+        } else if (choice == 2)
+            viewTransactions(transactions);
+        else if (choice == 3)
+            viewSummary(transactions);
+        else if (choice == 4)
+            searchTransactions(transactions);
+        else if (choice == 5)
+            cout << "Exiting... Goodbye!\n";
+        else
+            cout << "Invalid choice. Try again.\n";
+
+    } while (choice != 5);
+
+    return 0;
+}
